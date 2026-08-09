@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WinGo Admin Control Panel</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { text-align: center; color: #38bdf8; margin-bottom: 20px; font-size: 24px; }
+    
+    .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #334155; }
+    .status-bar { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; }
+    .timer { color: #ef4444; font-size: 24px; }
+    
+    .section-title { font-size: 16px; color: #cbd5e1; margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 5px; }
+    
+    /* Bet Overview Tables */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+    .bet-item { display: flex; justify-content: space-between; background: #0f172a; padding: 10px; border-radius: 6px; margin-bottom: 6px; font-size: 14px; }
+    
+    /* Manual Control Buttons */
+    .num-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .btn-override { background: #334155; color: #fff; border: 2px solid #38bdf8; padding: 15px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    .btn-override:hover { background: #38bdf8; color: #0f172a; }
+    
+    .notice { background: #0284c7; color: white; padding: 10px; border-radius: 6px; font-size: 13px; text-align: center; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>⚙️ WinGo Admin Control Dashboard</h1>
+
+  <!-- Live Status Card -->
+  <div class="card status-bar">
+    <div>চলতি পিরিয়ড: <span id="admin-period" style="color:#38bdf8;">-</span></div>
+    <div>কাউন্টডাউন: <span id="admin-timer" class="timer">00:30</span></div>
+  </div>
+
+  <!-- Live Bets Overview -->
+  <div class="card">
+    <div class="section-title">📊 চলতি রাউন্ডের মোট বেট ট্র্যাকিং (Live Bets)</div>
+    
+    <div class="grid-2">
+      <div>
+        <h4 style="color:#eab308; margin-bottom:8px;">Big vs Small</h4>
+        <div class="bet-item"><span>BIG:</span> <b id="amt-big" style="color:#22c55e;">৳0</b></div>
+        <div class="bet-item"><span>SMALL:</span> <b id="amt-small" style="color:#22c55e;">৳0</b></div>
+      </div>
+      <div>
+        <h4 style="color:#a855f7; margin-bottom:8px;">Colors</h4>
+        <div class="bet-item"><span>Green:</span> <b id="amt-green" style="color:#22c55e;">৳0</b></div>
+        <div class="bet-item"><span>Violet:</span> <b id="amt-violet" style="color:#22c55e;">৳0</b></div>
+        <div class="bet-item"><span>Red:</span> <b id="amt-red" style="color:#22c55e;">৳0</b></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual Result Control -->
+  <div class="card">
+    <div class="section-title">🎯 ম্যানুয়াল রেজাল্ট কন্ট্রোল (Manual Result Override)</div>
+    <p style="font-size:12px; color:#94a3b8; margin-bottom:15px;">
+      যেকোনো একটি নাম্বারে চাপ দিলে ব্যাকএন্ডের স্মার্ট সিস্টেমটি অফ হয়ে যাবে এবং পরবর্তী রাউন্ডে <b>আপনার সিলেক্ট করা নাম্বারটিই</b> বিজয়ী হবে!
+    </p>
+
+    <div class="num-grid">
+      <button class="btn-override" onclick="forceResult(0)">0 (Violet/Red)</button>
+      <button class="btn-override" onclick="forceResult(1)">1 (Green)</button>
+      <button class="btn-override" onclick="forceResult(2)">2 (Red)</button>
+      <button class="btn-override" onclick="forceResult(3)">3 (Green)</button>
+      <button class="btn-override" onclick="forceResult(4)">4 (Red)</button>
+      <button class="btn-override" onclick="forceResult(5)">5 (Violet/Green)</button>
+      <button class="btn-override" onclick="forceResult(6)">6 (Red)</button>
+      <button class="btn-override" onclick="forceResult(7)">7 (Green)</button>
+      <button class="btn-override" onclick="forceResult(8)">8 (Red)</button>
+      <button class="btn-override" onclick="forceResult(9)">9 (Green)</button>
+    </div>
+
+    <div class="notice" id="admin-msg">
+      💡 বর্তমানে: <b>অটোমেটিক লস-কমানো অ্যালগরিদম মোড</b> সক্রিয় আছে।
+    </div>
+  </div>
+</div>
+
+<script>
+  const BACKEND_URL = "https://wingo-server-pcim.onrender.com";
+  const socket = io(BACKEND_URL);
+
+  socket.on("timerUpdate", (data) => {
+    document.getElementById("admin-period").innerText = data.period;
+    let sec = data.timeLeft < 10 ? "0" + data.timeLeft : data.timeLeft;
+    document.getElementById("admin-timer").innerText = "00:" + sec;
+    
+    // প্রতি ২ সেকেন্ড পর পর বেট রিফ্রেশ করা
+    if(data.timeLeft % 2 === 0) fetchLiveBets();
+  });
+
+  socket.on("gameResult", () => {
+    document.getElementById("admin-msg").innerHTML = "💡 বর্তমানে: <b>অটোমেটিক লস-কমানো অ্যালগরিদম মোড</b> সক্রিয় আছে।";
+    resetBetDisplay();
+  });
+
+  socket.on("adminBetUpdate", (totals) => {
+    updateBetDisplay(totals);
+  });
+
+  function fetchLiveBets() {
+    fetch(`${BACKEND_URL}/api/admin/bets`)
+      .then(res => res.json())
+      .then(data => updateBetDisplay(data.totals))
+      .catch(err => console.log(err));
+  }
+
+  function updateBetDisplay(totals) {
+    if(!totals) return;
+    document.getElementById("amt-big").innerText = "৳" + (totals.sizes.Big || 0);
+    document.getElementById("amt-small").innerText = "৳" + (totals.sizes.Small || 0);
+    document.getElementById("amt-green").innerText = "৳" + (totals.colors.Green || 0);
+    document.getElementById("amt-violet").innerText = "৳" + (totals.colors.Violet || 0);
+    document.getElementById("amt-red").innerText = "৳" + (totals.colors.Red || 0);
+  }
+
+  function resetBetDisplay() {
+    document.getElementById("amt-big").innerText = "৳0";
+    document.getElementById("amt-small").innerText = "৳0";
+    document.getElementById("amt-green").innerText = "৳0";
+    document.getElementById("amt-violet").innerText = "৳0";
+    document.getElementById("amt-red").innerText = "৳0";
+  }
+
+  function forceResult(num) {
+    fetch(`${BACKEND_URL}/api/admin/set-result`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ number: num })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if(data.success) {
+        document.getElementById("admin-msg").innerHTML = `⚠️ <b>ম্যানুয়াল ওভাররাইড সেট হয়েছে!</b> পরবর্তী বিজয়ী নাম্বার হবে: <b style="font-size:18px; color:#facc15;">${num}</b>`;
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
