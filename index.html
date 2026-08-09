@@ -6,66 +6,83 @@
   <title>WinGo Game</title>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 20px; margin: 0; }
-    .card { background: white; padding: 20px; border-radius: 12px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    .timer { font-size: 32px; font-weight: bold; color: #e74c3c; margin: 15px 0; }
-    .btn { padding: 12px 24px; font-size: 16px; margin: 5px; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; }
+    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 20px; }
+    .card { background: white; padding: 20px; borderRadius: 12px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .timer { font-size: 36px; font-weight: bold; color: #e74c3c; margin: 15px 0; }
+    .btn { padding: 12px 24px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; margin: 5px; color: white; font-weight: bold; }
     .green { background: #2ecc71; }
     .red { background: #e74c3c; }
     .violet { background: #9b59b6; }
-    .status { margin-top: 15px; font-size: 18px; font-weight: bold; color: #34495e; }
     .history { margin-top: 20px; text-align: left; }
-    .history-item { padding: 8px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; }
+    .history-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ddd; }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h2>🎮 WinGo Prediction</h2>
-    <p>পিরিয়ড আইডি: <span id="period">-</span></p>
-    <div class="timer" id="timer">00:30</div>
+<div class="card">
+  <h2>🎮 WinGo Prediction</h2>
+  <h3>পিরিয়ড আইডি: <span id="period">-</span></h3>
+  <div class="timer" id="timer">00:30</div>
 
-    <h3>যেকোনো একটি কালার বেছে নিন:</h3>
-    <button class="btn green" onclick="placeBet('Green')">Green</button>
-    <button class="btn violet" onclick="placeBet('Violet')">Violet</button>
-    <button class="btn red" onclick="placeBet('Red')">Red</button>
+  <p><b>যেকোনো একটি কালার বেছে নিন:</b></p>
+  <button class="btn green" onclick="placeBet('Green')">Green</button>
+  <button class="btn violet" onclick="placeBet('Violet')">Violet</button>
+  <button class="btn red" onclick="placeBet('Red')">Red</button>
 
-    <div class="status" id="userBet">আপনি এখনো বেট ধরেননি</div>
+  <p id="user-bet" style="margin-top: 15px; color: #34495e;">আপনি এখনো বেট ধরেননি</p>
 
-    <div class="history">
-      <h3>📜 পূর্ববর্তী ফলাফল</h3>
-      <div id="historyList"></div>
-    </div>
+  <div class="history">
+    <h4>📜 পূর্ববর্তী ফলাফল</h4>
+    <div id="history-list"></div>
   </div>
+</div>
 
-  <script>
-    // লাইভ ব্যাকএন্ডের সাথে কানেক্ট করা হচ্ছে
-    const socket = io("https://wingo-server-pcim.onrender.com");
+<script>
+  // সরাসরি Render ব্যাকএন্ড সার্ভারের সাথে কানেক্ট করা হচ্ছে
+  const socket = io("https://wingo-server-pcim.onrender.com");
 
-    let currentPeriod = "";
+  let selectedBet = "";
 
-    socket.on("timerUpdate", (data) => {
-      document.getElementById("timer").innerText = `00:${data.timeLeft < 10 ? '0' : ''}${data.timeLeft}`;
-      document.getElementById("period").innerText = data.period;
-      currentPeriod = data.period;
-    });
+  socket.on("connect", () => {
+    console.log("Connected to server!");
+  });
 
-    socket.on("gameResult", (data) => {
-      alert(`🎉 পিরিয়ড ${data.period}-এর ফলাফল: নাম্বার ${data.number} (${data.color})`);
-      document.getElementById("userBet").innerText = "আপনি এখনো বেট ধরেননি";
-      
-      const historyList = document.getElementById("historyList");
-      const newItem = document.createElement("div");
-      newItem.className = "history-item";
-      newItem.innerHTML = `<span>পিরিয়ড: ${data.period}</span> <b>${data.number} (${data.color})</b>`;
-      historyList.prepend(newItem);
-    });
+  socket.on("timerUpdate", (data) => {
+    document.getElementById("period").innerText = data.period;
+    let sec = data.timeLeft < 10 ? "0" + data.timeLeft : data.timeLeft;
+    document.getElementById("timer").innerText = "00:" + sec;
+  });
 
-    function placeBet(color) {
-      document.getElementById("userBet").innerText = `আপনার বেট: ${color} (পিরিয়ড: ${currentPeriod})`;
-      socket.emit("placeBet", { period: currentPeriod, color: color });
+  socket.on("gameResult", (data) => {
+    let historyList = document.getElementById("history-list");
+    let newItem = document.createElement("div");
+    newItem.className = "history-item";
+    newItem.innerHTML = `<span>পিরিয়ড: ${data.period - 1}</span> <span>নম্বর: <b>${data.number}</b></span> <span style="color:${getColorCode(data.color)}"><b>${data.color}</b></span>`;
+    
+    historyList.prepend(newItem);
+
+    if (selectedBet) {
+      if (selectedBet === data.color) {
+        alert(`🎉 অভিনন্দন! আপনি জিতেছেন! বিজয়ী কালার: ${data.color}`);
+      } else {
+        alert(`❌ দুঃখিত! আপনি হেরেছেন। বিজয়ী কালার ছিল: ${data.color}`);
+      }
+      selectedBet = "";
+      document.getElementById("user-bet").innerText = "আপনি এখনো বেট ধরেননি";
     }
-  </script>
+  });
+
+  function placeBet(color) {
+    selectedBet = color;
+    document.getElementById("user-bet").innerText = "আপনার সিলেক্ট করা কালার: " + color;
+  }
+
+  function getColorCode(color) {
+    if (color === "Green") return "#2ecc71";
+    if (color === "Red") return "#e74c3c";
+    return "#9b59b6";
+  }
+</script>
+
 </body>
-                                                           </html>
-                                                           
+</html>
