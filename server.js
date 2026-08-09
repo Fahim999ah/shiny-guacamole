@@ -1,56 +1,51 @@
-// wingo-game / server.js
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
 
 const app = express();
+app.use(cors());
+
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
 
-app.use(express.json());
-
-// Basic Route for Server Check
-app.get('/', (req, res) => {
-    res.send('WinGo Game Server is Running Live 24/7!');
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
 });
 
-// WinGo 1-Min Game Timer Logic
-let timer = 60;
-let currentRound = Date.now();
+let period = 1;
+let timeLeft = 30;
+
+app.get("/", (req, res) => {
+  res.send("WinGo Game Server is Running Live 24/7!");
+});
 
 setInterval(() => {
-    timer--;
+  timeLeft--;
+  if (timeLeft < 0) {
+    timeLeft = 30;
+    period++;
     
-    // Broadcast live timer to all connected users
-    io.emit('timer_update', { timer, round: currentRound });
+    const number = Math.floor(Math.random() * 10);
+    let color = "Green";
+    if ([1, 3, 7, 9].includes(number)) color = "Green";
+    else if ([2, 4, 6, 8].includes(number)) color = "Red";
+    else if ([0, 5].includes(number)) color = "Violet";
 
-    if (timer <= 0) {
-        // Generate Result (0-9 Number, Color & Big/Small)
-        const winningNumber = Math.floor(Math.random() * 10);
-        const bigOrSmall = winningNumber >= 5 ? 'Big' : 'Small';
-        let color = 'Red';
-        if (winningNumber === 0 || winningNumber === 5) color = 'Violet';
-        else if ([1, 3, 7, 9].includes(winningNumber)) color = 'Green';
+    io.emit("gameResult", { period, number, color });
+  }
 
-        const result = {
-            round: currentRound,
-            number: winningNumber,
-            bigOrSmall: bigOrSmall,
-            color: color,
-            timestamp: new Date()
-        };
-
-        // Broadcast game result
-        io.emit('game_result', result);
-
-        // Reset Timer for Next Round
-        timer = 60;
-        currentRound = Date.now();
-    }
+  io.emit("timerUpdate", { period, timeLeft });
 }, 1000);
+
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+  socket.emit("timerUpdate", { period, timeLeft });
+});
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
-      
