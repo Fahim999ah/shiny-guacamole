@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WinGo Game</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 20px; margin: 0; }
+    .card { background: white; padding: 20px; border-radius: 12px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .timer { font-size: 32px; font-weight: bold; color: #e74c3c; margin: 15px 0; }
+    .btn { padding: 12px 24px; font-size: 16px; margin: 5px; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; }
+    .green { background: #2ecc71; }
+    .red { background: #e74c3c; }
+    .violet { background: #9b59b6; }
+    .status { margin-top: 15px; font-size: 18px; font-weight: bold; color: #34495e; }
+    .history { margin-top: 20px; text-align: left; }
+    .history-item { padding: 8px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>🎮 WinGo Prediction</h2>
+    <p>পিরিয়ড আইডি: <span id="period">-</span></p>
+    <div class="timer" id="timer">00:30</div>
+
+    <h3>যেকোনো একটি কালার বেছে নিন:</h3>
+    <button class="btn green" onclick="placeBet('Green')">Green</button>
+    <button class="btn violet" onclick="placeBet('Violet')">Violet</button>
+    <button class="btn red" onclick="placeBet('Red')">Red</button>
+
+    <div class="status" id="userBet">আপনি এখনো বেট ধরেননি</div>
+
+    <div class="history">
+      <h3>📜 পূর্ববর্তী ফলাফল</h3>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <script>
+    // লাইভ ব্যাকএন্ডের সাথে কানেক্ট করা হচ্ছে
+    const socket = io("https://wingo-server-pcim.onrender.com");
+
+    let currentPeriod = "";
+
+    socket.on("timerUpdate", (data) => {
+      document.getElementById("timer").innerText = `00:${data.timeLeft < 10 ? '0' : ''}${data.timeLeft}`;
+      document.getElementById("period").innerText = data.period;
+      currentPeriod = data.period;
+    });
+
+    socket.on("gameResult", (data) => {
+      alert(`🎉 পিরিয়ড ${data.period}-এর ফলাফল: নাম্বার ${data.number} (${data.color})`);
+      document.getElementById("userBet").innerText = "আপনি এখনো বেট ধরেননি";
+      
+      const historyList = document.getElementById("historyList");
+      const newItem = document.createElement("div");
+      newItem.className = "history-item";
+      newItem.innerHTML = `<span>পিরিয়ড: ${data.period}</span> <b>${data.number} (${data.color})</b>`;
+      historyList.prepend(newItem);
+    });
+
+    function placeBet(color) {
+      document.getElementById("userBet").innerText = `আপনার বেট: ${color} (পিরিয়ড: ${currentPeriod})`;
+      socket.emit("placeBet", { period: currentPeriod, color: color });
+    }
+  </script>
+</body>
+                                                           </html>
+                                                           
