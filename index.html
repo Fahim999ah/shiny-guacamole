@@ -1,228 +1,72 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DK Win - WinGo Prediction</title>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; padding: 15px; display: flex; justify-content: center; }
-    .app-container { width: 100%; max-width: 480px; background: #1e293b; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    
-    /* Header & Balance */
-    .header { display: flex; justify-content: space-between; align-items: center; background: #334155; padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; }
-    .balance-title { font-size: 12px; color: #94a3b8; text-transform: uppercase; }
-    .balance-amount { font-size: 20px; font-weight: bold; color: #38bdf8; }
-    
-    /* Game Info Bar */
-    .game-info { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 15px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 20px; }
-    .period-label { font-size: 13px; color: #94a3b8; }
-    .period-val { font-size: 18px; font-weight: bold; color: #f1f5f9; }
-    .timer-label { font-size: 11px; color: #94a3b8; text-align: right; }
-    .timer-val { font-size: 28px; font-weight: 800; color: #ef4444; }
-    
-    /* Colors Section */
-    .section-title { font-size: 14px; font-weight: 600; color: #cbd5e1; margin-bottom: 10px; }
-    .color-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .btn-color { padding: 12px; border: none; border-radius: 8px; font-weight: bold; color: white; cursor: pointer; font-size: 15px; transition: transform 0.1s; }
-    .btn-color:active { transform: scale(0.95); }
-    .bg-green { background: #22c55e; }
-    .bg-violet { background: #a855f7; }
-    .bg-red { background: #ef4444; }
-    
-    /* Numbers Grid */
-    .number-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 15px; }
-    .btn-num { background: #334155; color: #f8fafc; border: 1px solid #475569; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-    .btn-num:active { background: #475569; }
-
-    /* Big / Small */
-    .size-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-    .btn-size { padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; color: white; cursor: pointer; }
-    .bg-big { background: #eab308; }
-    .bg-small { background: #3b82f6; }
-    
-    /* Betting Amount Selector */
-    .bet-box { background: #0f172a; padding: 12px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #334155; }
-    .bet-amounts { display: flex; gap: 8px; margin-top: 8px; }
-    .btn-amt { flex: 1; background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 6px; border-radius: 6px; font-size: 12px; cursor: pointer; }
-    .btn-amt.active { background: #38bdf8; color: #0f172a; font-weight: bold; border-color: #38bdf8; }
-
-    /* Game History Table */
-    .history-card { background: #0f172a; border-radius: 12px; padding: 12px; border: 1px solid #334155; }
-    .table-header { display: flex; justify-content: space-between; font-size: 12px; color: #64748b; font-weight: bold; padding-bottom: 8px; border-bottom: 1px solid #1e293b; }
-    .history-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #1e293b; font-size: 13px; }
-    .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WinGo Game Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 20px; text-align: center; }
+        .card { background: #1e293b; max-width: 400px; margin: 0 auto; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .balance-box { background: #334155; padding: 15px; border-radius: 8px; font-size: 18px; margin-bottom: 20px; }
+        .timer { font-size: 24px; font-weight: bold; color: #f59e0b; margin: 15px 0; }
+        .btn-group { display: flex; justify-content: space-between; gap: 10px; margin-top: 15px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; color: #fff; }
+        .btn-green { background: #22c55e; }
+        .btn-violet { background: #a855f7; }
+        .btn-red { background: #ef4444; }
+        .btn:hover { opacity: 0.9; }
+        .status { margin-top: 15px; font-size: 14px; color: #94a3b8; }
+    </style>
 </head>
 <body>
 
-<div class="app-container">
-  <!-- Header -->
-  <div class="header">
-    <div>
-      <div class="balance-title">অ্যাভেলেবল ব্যালেন্স</div>
-      <div class="balance-amount">৳ <span id="user-balance">1000.00</span></div>
+    <div class="card">
+        <h2>🎮 WinGo 1-Min Game</h2>
+        
+        <div class="balance-box">
+            কয়েন ব্যালেন্স: ৳ <span id="balance">1000</span>
+        </div>
+
+        <div class="timer">
+            সময় বাকি: <span id="time">00:60</span>
+        </div>
+
+        <p>যেকোনো একটি কালার সিলেক্ট করুন:</p>
+
+        <div class="btn-group">
+            <button class="btn btn-green" onclick="placeBet('Green')">Green</button>
+            <button class="btn btn-violet" onclick="placeBet('Violet')">Violet</button>
+            <button class="btn btn-red" onclick="placeBet('Red')">Red</button>
+        </div>
+
+        <div class="status" id="statusMessage">সার্ভারের সাথে কানেক্টেড...</div>
     </div>
-    <button onclick="addFunds()" style="background:#38bdf8; color:#0f172a; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">+ রিচার্জ</button>
-  </div>
 
-  <!-- Game Info -->
-  <div class="game-info">
-    <div>
-      <div class="period-label">পিরিয়ড নম্বর</div>
-      <div class="period-val" id="period">-</div>
-    </div>
-    <div>
-      <div class="timer-label">অবশিষ্ট সময়</div>
-      <div class="timer-val" id="timer">00:30</div>
-    </div>
-  </div>
+    <script>
+        const API_URL = "https://wingo-server-pcim.onrender.com"; // আপনার রেন্ডার ব্যাকএন্ড লিংক
 
-  <!-- Bet Selection: Colors -->
-  <div class="section-title">কালার নির্বাচন করুন</div>
-  <div class="color-btns">
-    <button class="btn-color bg-green" onclick="placeBet('color', 'Green')">Green</button>
-    <button class="btn-color bg-violet" onclick="placeBet('color', 'Violet')">Violet</button>
-    <button class="btn-color bg-red" onclick="placeBet('color', 'Red')">Red</button>
-  </div>
+        // ১ মিনিটের টাইমার সিমুলেশন
+        let timeLeft = 60;
+        setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) timeLeft = 60;
+            document.getElementById('time').innerText = `00:${timeLeft < 10 ? '0' : ''}${timeLeft}`;
+        }, 1000);
 
-  <!-- Bet Selection: Numbers -->
-  <div class="section-title">নাম্বার নির্বাচন করুন (0 - 9)</div>
-  <div class="number-grid">
-    <button class="btn-num" onclick="placeBet('number', '0')">0</button>
-    <button class="btn-num" onclick="placeBet('number', '1')">1</button>
-    <button class="btn-num" onclick="placeBet('number', '2')">2</button>
-    <button class="btn-num" onclick="placeBet('number', '3')">3</button>
-    <button class="btn-num" onclick="placeBet('number', '4')">4</button>
-    <button class="btn-num" onclick="placeBet('number', '5')">5</button>
-    <button class="btn-num" onclick="placeBet('number', '6')">6</button>
-    <button class="btn-num" onclick="placeBet('number', '7')">7</button>
-    <button class="btn-num" onclick="placeBet('number', '8')">8</button>
-    <button class="btn-num" onclick="placeBet('number', '9')">9</button>
-  </div>
-
-  <!-- Bet Selection: Big/Small -->
-  <div class="section-title">সাইজ নির্বাচন (Big / Small)</div>
-  <div class="size-btns">
-    <button class="btn-size bg-big" onclick="placeBet('size', 'Big')">BIG (5-9)</button>
-    <button class="btn-size bg-small" onclick="placeBet('size', 'Small')">SMALL (0-4)</button>
-  </div>
-
-  <!-- Bet Amount Selection -->
-  <div class="bet-box">
-    <div style="font-size: 12px; color: #94a3b8;">বেট অ্যামাউন্ট সেট করুন:</div>
-    <div class="bet-amounts">
-      <button class="btn-amt active" onclick="setBetAmount(10, this)">৳১০</button>
-      <button class="btn-amt" onclick="setBetAmount(50, this)">৳৫০</button>
-      <button class="btn-amt" onclick="setBetAmount(100, this)">৳১০০</button>
-      <button class="btn-amt" onclick="setBetAmount(500, this)">৳৫০০</button>
-    </div>
-  </div>
-
-  <!-- Game History -->
-  <div class="history-card">
-    <div class="table-header">
-      <span>পিরিয়ড</span>
-      <span>নাম্বার</span>
-      <span>সাইজ</span>
-      <span>কালার</span>
-    </div>
-    <div id="history-list"></div>
-  </div>
-</div>
-
-<script>
-  const BACKEND_URL = "https://wingo-server-pcim.onrender.com";
-  const socket = io(BACKEND_URL);
-
-  let currentBalance = 1000.00;
-  let selectedAmount = 10;
-  let myActiveBets = [];
-
-  function setBetAmount(amt, btn) {
-    selectedAmount = amt;
-    document.querySelectorAll('.btn-amt').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-
-  function addFunds() {
-    currentBalance += 500;
-    document.getElementById('user-balance').innerText = currentBalance.toFixed(2);
-    alert('৳৫০০ ভার্চুয়াল ব্যালেন্স যোগ করা হয়েছে!');
-  }
-
-  function placeBet(type, choice) {
-    if (selectedAmount > currentBalance) {
-      alert("পর্যাপ্ত ব্যালেন্স নেই! রিচার্জ করুন।");
-      return;
-    }
-
-    fetch(`${BACKEND_URL}/api/user/place-bet`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: "user_demo",
-        type: type,
-        choice: choice,
-        amount: selectedAmount
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if(data.success) {
-        currentBalance -= selectedAmount;
-        document.getElementById('user-balance').innerText = currentBalance.toFixed(2);
-        myActiveBets.push({ type, choice, amount: selectedAmount });
-        alert(`বেট কনফার্ম হয়েছে! [${type.toUpperCase()}: ${choice}] - ৳${selectedAmount}`);
-      }
-    })
-    .catch(err => alert("Server connection error!"));
-  }
-
-  socket.on("timerUpdate", (data) => {
-    document.getElementById("period").innerText = data.period;
-    let sec = data.timeLeft < 10 ? "0" + data.timeLeft : data.timeLeft;
-    document.getElementById("timer").innerText = "00:" + sec;
-  });
-
-  socket.on("gameResult", (data) => {
-    let historyList = document.getElementById("history-list");
-    let newItem = document.createElement("div");
-    newItem.className = "history-row";
-    
-    let colorBg = data.color === "Green" ? "#22c55e" : (data.color === "Red" ? "#ef4444" : "#a855f7");
-    let sizeBg = data.size === "Big" ? "#eab308" : "#3b82f6";
-
-    newItem.innerHTML = `
-      <span style="color:#cbd5e1; font-weight:bold;">${data.period}</span>
-      <span style="font-weight:bold; font-size:15px; color:#f8fafc;">${data.number}</span>
-      <span class="badge" style="background:${sizeBg}">${data.size}</span>
-      <span class="badge" style="background:${colorBg}">${data.color}</span>
-    `;
-    
-    historyList.prepend(newItem);
-
-    // বেট উইন/লস চেক
-    if (myActiveBets.length > 0) {
-      myActiveBets.forEach(bet => {
-        let isWin = false;
-        let winAmount = 0;
-
-        if (bet.type === 'size' && bet.choice === data.size) { isWin = true; winAmount = bet.amount * 2; }
-        else if (bet.type === 'color' && bet.choice === data.color) { isWin = true; winAmount = bet.amount * 2; }
-        else if (bet.type === 'number' && parseInt(bet.choice) === data.number) { isWin = true; winAmount = bet.amount * 9; }
-
-        if (isWin) {
-          currentBalance += winAmount;
-          alert(`🎉 অভিনন্দন! পিরিয়ড ${data.period}-এ আপনি ৳${winAmount} জিতেছেন!`);
+        // বেট বা বাজি ধরার ফাংশন
+        function placeBet(color) {
+            document.getElementById('statusMessage').innerText = `${color} কালারে ৳10 বাজি ধরা হয়েছে!`;
+            
+            // ব্যাকএন্ডে রিকোয়েস্ট পাঠানোর কোড
+            fetch(`${API_URL}/api/bet`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ color: color, amount: 10 })
+            })
+            .then(res => res.json())
+            .then(data => console.log(data))
+            .catch(err => console.error("Error:", err));
         }
-      });
-      document.getElementById('user-balance').innerText = currentBalance.toFixed(2);
-      myActiveBets = [];
-    }
-  });
-</script>
-
+    </script>
 </body>
 </html>
