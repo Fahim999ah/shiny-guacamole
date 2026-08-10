@@ -1,31 +1,34 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
+const http = require('http');
+const fs = require('fs');
 const path = require('path');
 
-const app = express();
-app.use(express.json());
-app.use(cors());
-
-// Database Connection
-const MONGO_URI = process.env.MONGO_URI;
-if (MONGO_URI) {
-    mongoose.connect(MONGO_URI)
-        .then(() => console.log('MongoDB Connected Successfully'))
-        .catch(err => console.error('MongoDB Connection Error:', err));
-}
-
-// Serve Frontend index.html
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// API for Placing Bet
-app.post('/api/bet', (req, res) => {
-    const { color, amount } = req.body;
-    console.log(`Bet placed: ${color} with amount ৳${amount}`);
-    res.json({ success: true, message: `Successfully placed bet on ${color}` });
-});
-
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+const server = http.createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/') {
+        const filePath = path.join(__dirname, 'index.html');
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+                res.end('index.html ফাইল পাওয়া যায়নি!');
+            } else {
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(data);
+            }
+        });
+    } else if (req.method === 'POST' && req.url === '/api/bet') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', () => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, message: 'Bet received successfully!' }));
+        });
+    } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not Found');
+    }
+});
+
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
